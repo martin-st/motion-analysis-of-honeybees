@@ -21,116 +21,8 @@ df <- read_csv("./datasets/frequency_experiments.csv") %>%
 # new_activity_calculation: smaller ROI, symmetrical around the emitter
 # activity_calculation_frame: ROI over whole frame
 
-# Generate needed Cols ----------------------------------------------------
-# generate dateTime Field
-df$dateTime      <- paste0(df$date, "-", df$time)
-# generate norm activity cols
-df$norm_activity                     <- df$activity
-# save frequency original column as we do some mutating with it
-df$frequency_org <- df$frequency
-
-# Generate Groups, to represent each Frequency Change (round) ---------------------
-# group each frequenz change
-df$subgroup <- NA
-lastFreq    <- 0
-curFreq     <- 0
-freqGroup   <- 0
-
-for(i in 1:nrow(df)){
-  curFreq <- df$frequency[i]
-  # check if current frequency is last frequency
-  # if not we change the group
-  if(curFreq != lastFreq){
-    freqGroup <- freqGroup + 1
-  }
-  df$subgroup[i] <- freqGroup
-  lastFreq <- curFreq
-}
-# Cleanup
-rm(lastFreq, curFreq, freqGroup, i)
-
-# Cumulative Sum ---------------------------------------------------------
-# generate a cumulative sum in our frequency breaks
-# this will help us to pick out the middle of the trial
-df$csum <- 1
-df <- df %>% 
-  group_by(subgroup) %>%
-  mutate(
-    csum = cumsum(csum)
-  ) %>% 
-  ungroup()
-
-# control are frames between breaks with 0 frequency from 15-20 cumsum (-2)
-df <- df %>%
-  mutate(
-    frequency = ifelse(between(csum, 15, 20) & frequency_org == 0, -2, frequency_org)
-  )
-
-# Filter frames in our breaks, which are at the beginning < 3 and at the end > 10
-df <- df %>% filter(between(csum, 3,10) | frequency == -2 )
-
-# Remove Zeroes
-df <- df %>% filter(frequency != 0)
-
-# Add count, we could filter for it eg. that we only plot if we have at least 30 rounds
-df <- df %>% add_count(frequency, name = "count")
-
-
-# Calculate Mean Difference of the Control -----------------------------------------------
-
-# Calculate mean difference of base -2 between rounds
-dfBaseSummary <- df %>%
-  filter(frequency == -2) %>%
-  group_by(dateTime) %>%
-  summarise(
-    m_activity = mean(activity)
-    #m_new_activity_calculation = mean(new_activity_calculation),
-    #m_activity_calculation_frame = mean(activity_calculation_frame)
-  ) %>% 
-  mutate(
-    d_activity = m_activity - m_activity[[1]]
-    #d_new_activity_calculation = m_new_activity_calculation - m_new_activity_calculation[[1]],
-    #d_activity_calculation_frame = m_activity_calculation_frame - m_activity_calculation_frame[[1]]
-  )
-
-
-# Normalize based on Mean Base Activity -----------------------------------
-testUnits <- unique(df$dateTime)
-for(i in 1:length(testUnits)){
-  testName <- testUnits[[i]]
-  baseDiff <- dfBaseSummary %>% filter(dateTime == testName)
-  df <- df %>%
-    mutate(
-      norm_activity = ifelse(
-        dateTime == testName, 
-        activity / baseDiff$m_activity, norm_activity # we could here change to median
-      )
-      #norm_new_activity_calculation = ifelse(
-      #  dateTime == testName, 
-      #  new_activity_calculation / baseDiff$m_new_activity_calculation, norm_new_activity_calculation # we could here change to median
-      #),
-      #norm_activity_calculation_frame = ifelse(
-      #  dateTime == testName, 
-      #  activity_calculation_frame / baseDiff$m_activity_calculation_frame, norm_activity_calculation_frame # we could here change to median
-      #),
-    )
-}
-
-# Cleanup
-rm(testUnits, i, testName)
-
-# Generate Factor Levels for Plots ----------------------------------------
-# generate factor frequency
-df <- df %>% 
-  mutate(
-    frequency_factor = factor(frequency) %>% fct_recode( Control = "-2", WN = "-1")
-  )
-
-df <- df %>% 
-  left_join(velo, by = c("frequency" = "frequency")) %>% 
-  mutate(
-    velocity = if_else(frequency == "-2", 0, velocity)
-  )
+# Normalize ---------------------------------------------------------------
+source(paste0(here(), "/data_analysis/utils.R"))
 
 # Plotting Loop of Different ROIs -----------------------------------------------------------
 # in the final dataset we only have one ROI left
@@ -203,9 +95,9 @@ p1_df <- df %>%
   filter(frequency_factor != "WN" & frequency_factor != "440") %>%
   group_by(frequency) %>%
   summarize(
-    mean = mean(norm_new_activity_calculation),
-    upper = mean + sd(norm_new_activity_calculation),
-    lower = mean - sd(norm_new_activity_calculation)
+    mean = mean(norm_activity),
+    upper = mean + sd(norm_activity),
+    lower = mean - sd(norm_activity)
   ) %>%
   mutate(
     colorb = ifelse(mean > 1, "A", "B"),
@@ -272,7 +164,7 @@ df_test <- df %>%
 # we use permutation test -> distribution is no problem
 # repeated measurement, we need to take it into with dateTime
 (wt <- coin::oneway_test(
-  norm_new_activity_calculation ~ frequency_factor | dateTime, 
+  norm_activity ~ frequency_factor | dateTime, 
   data = df_test,
   distribution = approximate(10000)
 ))
@@ -284,7 +176,7 @@ p2_text = paste0(
 )
 
 p2 <- df_test %>% 
-  ggplot(aes(x = frequency_factor, y = norm_new_activity_calculation)) +
+  ggplot(aes(x = frequency_factor, y = norm_activity)) +
   geom_boxplot() +
   scale_y_continuous(breaks = seq(0,5,0.2)) +
   ylab("Relative Pixel-Value Change") +
@@ -322,7 +214,7 @@ p3_df <- p3_df %>%
   )
 
 p3 <- p3_df %>%
-  ggplot(aes(x = frequency_factor, y = norm_new_activity_calculation, color = colorb)) +
+  ggplot(aes(x = frequency_factor, y = norm_activity, color = colorb)) +
   geom_hline(
     aes(yintercept = 1), color = "black", alpha = 0.5, show.legend = F
   ) +
@@ -350,7 +242,7 @@ ggsave(paste0("./data_analysis/output/", "freq_p3_box.pdf"), width = 11, height 
 # Pairwise T-Test ---------------------------------------------------------
 # parametic and non-parametic give both more or less same results
 # we choose non-parametic as some assumptions for parametic are not met
-res     <- aov(norm_new_activity_calculation ~ frequency_factor, data = df)
+res     <- aov(norm_activity ~ frequency_factor, data = df)
 res_hsd <- TukeyHSD(res)
 p.res   <- tidy(res_hsd)
 write_csv2(p.res, "output/pairwise_HSD.csv")
@@ -369,12 +261,12 @@ lettersDf <- tibble(
 p3_letters <- p3_df %>%
   left_join(lettersDf, by = c("frequency_factor")) %>% 
   group_by(frequency_factor) %>% summarise(
-    y = max(norm_new_activity_calculation),
+    y = max(norm_activity),
     letter = unique(letters)
   )
 
 p4 <- p3_df %>% 
-  ggplot(aes(x = frequency_factor, y = norm_new_activity_calculation, color = colorb)) +
+  ggplot(aes(x = frequency_factor, y = norm_activity, color = colorb)) +
   geom_hline(
     aes(yintercept = 1), color = "black", alpha = 0.5, show.legend = F
   ) +
@@ -409,8 +301,8 @@ ggsave(paste0("./data_analysis/output/", "freq_p3_box_sign.pdf"), width = 11, he
 # Pairwise T-Test - Non-Parametic -----------------------------------------
 # see above we choose to use non-parametic test, its not as powerful
 # but also takes less assumptions
-# res_k     <- kruskal.test(norm_new_activity_calculation ~ 0 + frequency_factor, data = df)
-res_hsd_w <- pairwise.wilcox.test(df$norm_new_activity_calculation, df$frequency_factor, p.adj = "holm")
+# res_k     <- kruskal.test(norm_activity ~ 0 + frequency_factor, data = df)
+res_hsd_w <- pairwise.wilcox.test(df$norm_activity, df$frequency_factor, p.adj = "holm")
 p.res_w   <- tidy(res_hsd_w)
 write_csv2(p.res_w, "output/pairwise_wilcox_holm.csv")
 # matrix from pairwise wilcox is not quatratic
@@ -430,12 +322,12 @@ lettersDf_w <- tibble(
 p5_letters <- p3_df %>%
   left_join(lettersDf_w, by = c("frequency_factor")) %>% 
   group_by(frequency_factor) %>% summarise(
-    y = max(norm_new_activity_calculation),
+    y = max(norm_activity),
     letter = unique(letters)
   )
 
 p5 <- p3_df %>% 
-  ggplot(aes(x = frequency_factor, y = norm_new_activity_calculation, color = colorb)) +
+  ggplot(aes(x = frequency_factor, y = norm_activity, color = colorb)) +
   geom_hline(
     aes(yintercept = 1), color = "black", alpha = 0.5, show.legend = F
   ) +
