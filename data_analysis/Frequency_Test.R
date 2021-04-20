@@ -13,7 +13,7 @@ cbb_Palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2
 
 # Read Data ---------------------------------------------------------------
 # Read data and drop_na as cleanup, if we have empty rows appended by accident
-df <- read_csv("../data_analysis/Frequency_Test.csv") %>%
+df <- read_csv("./datasets/frequency_experiments.csv") %>%
   drop_na()
 
 # Activity Cols Description -----------------------------------------------
@@ -83,14 +83,14 @@ dfBaseSummary <- df %>%
   filter(frequency == -2) %>%
   group_by(dateTime) %>%
   summarise(
-    m_activity = mean(activity),
-    m_new_activity_calculation = mean(new_activity_calculation),
-    m_activity_calculation_frame = mean(activity_calculation_frame)
+    m_activity = mean(activity)
+    #m_new_activity_calculation = mean(new_activity_calculation),
+    #m_activity_calculation_frame = mean(activity_calculation_frame)
   ) %>% 
   mutate(
-    d_activity = m_activity - m_activity[[1]],
-    d_new_activity_calculation = m_new_activity_calculation - m_new_activity_calculation[[1]],
-    d_activity_calculation_frame = m_activity_calculation_frame - m_activity_calculation_frame[[1]]
+    d_activity = m_activity - m_activity[[1]]
+    #d_new_activity_calculation = m_new_activity_calculation - m_new_activity_calculation[[1]],
+    #d_activity_calculation_frame = m_activity_calculation_frame - m_activity_calculation_frame[[1]]
   )
 
 
@@ -104,15 +104,15 @@ for(i in 1:length(testUnits)){
       norm_activity = ifelse(
         dateTime == testName, 
         activity / baseDiff$m_activity, norm_activity # we could here change to median
-      ),
-      norm_new_activity_calculation = ifelse(
-        dateTime == testName, 
-        new_activity_calculation / baseDiff$m_new_activity_calculation, norm_new_activity_calculation # we could here change to median
-      ),
-      norm_activity_calculation_frame = ifelse(
-        dateTime == testName, 
-        activity_calculation_frame / baseDiff$m_activity_calculation_frame, norm_activity_calculation_frame # we could here change to median
-      ),
+      )
+      #norm_new_activity_calculation = ifelse(
+      #  dateTime == testName, 
+      #  new_activity_calculation / baseDiff$m_new_activity_calculation, norm_new_activity_calculation # we could here change to median
+      #),
+      #norm_activity_calculation_frame = ifelse(
+      #  dateTime == testName, 
+      #  activity_calculation_frame / baseDiff$m_activity_calculation_frame, norm_activity_calculation_frame # we could here change to median
+      #),
     )
 }
 
@@ -124,6 +124,12 @@ rm(testUnits, i, testName)
 df <- df %>% 
   mutate(
     frequency_factor = factor(frequency) %>% fct_recode( Control = "-2", WN = "-1")
+  )
+
+df <- df %>% 
+  left_join(velo, by = c("frequency" = "frequency")) %>% 
+  mutate(
+    velocity = if_else(frequency == "-2", 0, velocity)
   )
 
 # Plotting Loop of Different ROIs -----------------------------------------------------------
@@ -183,9 +189,9 @@ for(i in seq_along(rois)){
       axis.text.x = element_text(angle = 65, vjust = 0.5)
     )
 
-  ggsave(paste0("output/", roi,"_plot1.pdf"), width = 10, plot1) 
-  ggsave(paste0("output/", roi,"_plot2.pdf"), width = 10, plot2) 
-  ggsave(paste0("output/", roi,"_plot3.pdf"), width = 10, plot3) 
+  ggsave(paste0("./data_analysis/output/", roi,"_plot1.pdf"), width = 10, plot1) 
+  ggsave(paste0("./data_analysis/output/", roi,"_plot2.pdf"), width = 10, plot2) 
+  ggsave(paste0("./data_analysis/output/", roi,"_plot3.pdf"), width = 10, plot3) 
 
   # drop y for next round
   df <- df %>% select(-"y")
@@ -250,7 +256,7 @@ p1 <- p1_df %>%
   theme_classic() +
   theme(axis.text.x = element_text(angle = 40, vjust = 0.5, hjust = 0.3))
 
-ggsave(paste0("output/", "freq_p1_points.pdf"), width = 11, height = 5, p1)
+ggsave(paste0("./data_analysis/output/", "freq_p1_points.pdf"), width = 11, height = 5, p1)
 
 # Permutation Test  -------------------------------------------------------
 # Did not make it into the final Paper
@@ -291,7 +297,7 @@ p2 <- df_test %>%
     ) +
   theme_classic()
 
-ggsave(paste0("output/", "freq_p2_test.pdf"), p2, width = 5, height = 5) 
+ggsave(paste0("./data_analysis/output/", "freq_p2_test.pdf"), p2, width = 5, height = 5) 
 
 
 # BoxPlots ----------------------------------------------------------------
@@ -339,7 +345,7 @@ p3 <- p3_df %>%
   ylab("Relative Pixel-Value Change") +
   xlab("Frequency")
 
-ggsave(paste0("output/", "freq_p3_box.pdf"), width = 11, height = 5, p3) 
+ggsave(paste0("./data_analysis/output/", "freq_p3_box.pdf"), width = 11, height = 5, p3) 
 
 # Pairwise T-Test ---------------------------------------------------------
 # parametic and non-parametic give both more or less same results
@@ -398,7 +404,7 @@ p4 <- p3_df %>%
   ylab("Relative Pixel-Value Change") +
   xlab("Frequency")
 
-ggsave(paste0("output/", "freq_p3_box_sign.pdf"), width = 11, height = 5, p4) 
+ggsave(paste0("./data_analysis/output/", "freq_p3_box_sign.pdf"), width = 11, height = 5, p4) 
 
 # Pairwise T-Test - Non-Parametic -----------------------------------------
 # see above we choose to use non-parametic test, its not as powerful
@@ -459,5 +465,5 @@ p5 <- p3_df %>%
   ylab("Relative Pixel-Value Change") +
   xlab("Frequency")
 
-ggsave(paste0("output/", "freq_p5_box_sign_wilcox.pdf"), width = 11, height = 5, p5) 
+ggsave(paste0("./data_analysis/output/", "freq_p5_box_sign_wilcox.pdf"), width = 11, height = 5, p5)
 

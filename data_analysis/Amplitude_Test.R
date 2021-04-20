@@ -8,7 +8,7 @@ cbb_Palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2
 
 # Read Data ---------------------------------------------------------------
 # Read data and drop_na as cleanup, if we have empty rows appended by accident
-df <- read_csv("../datasets/amplitude_experiments.csv") %>%
+df <- read_csv("./datasets/amplitude_experiments.csv") %>%
   drop_na()
 
 # Add Dummy Fields --------------------------------------------------------
@@ -100,6 +100,15 @@ df <- df %>%
     frequency_factor = factor(frequency) %>% fct_recode(Control = "-2")
   )
 
+x <- df %>%
+  group_by(time, subgroup) %>% 
+  summarise(
+    frequency = first(frequency),
+    amplitude = first(amplitude)
+  ) %>% 
+  count(frequency, amplitude, time)
+  
+
 # Plots -------------------------------------------------------------------
 
 # Control Plot
@@ -134,4 +143,4 @@ p1 <- df %>%
   scale_x_continuous(breaks = c(unique(df$amplitude))) +
   theme_classic()
 
-ggsave(paste0("output/", "amp_p1_lines.pdf"), width = 11, height = 5, p1)
+ggsave(paste0("./data_analysis/output/", "amp_p1_lines.pdf"), width = 11, height = 5, p1)
