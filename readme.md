@@ -4,7 +4,7 @@ Code pieces for motion analysis of honeybess. For full reproducibility we includ
 
 ## Folder Structure
 
-- [.datasets](./datasets/)
+- [datasets](./datasets/)
   - Collected frequency and amplitude datasets as .csv files
 - [python scripts](./python_scripts/)
   - Script to calculate and extract PMI from movie recording, utilizating cv2
