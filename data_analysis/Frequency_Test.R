@@ -304,7 +304,7 @@ ggsave(paste0("./data_analysis/output/", "freq_p3_box_sign.pdf"), width = 11, he
 # res_k     <- kruskal.test(norm_activity ~ 0 + frequency_factor, data = df)
 res_hsd_w <- pairwise.wilcox.test(df$norm_activity, df$frequency_factor, p.adj = "holm")
 p.res_w   <- tidy(res_hsd_w)
-write_csv2(p.res_w, "output/pairwise_wilcox_holm.csv")
+write_csv2(p.res_w, "./data_analysis/output/pairwise_wilcox_holm.csv")
 # matrix from pairwise wilcox is not quatratic
 # generate named vector for multcompLetters, see help for multcompLetters
 test_vector        <- p.res_w$p.value

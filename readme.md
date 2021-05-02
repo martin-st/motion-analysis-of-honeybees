@@ -1,6 +1,6 @@
 # Motion Analysis of Honeybees
 
-Code pieces for motion analysis of honeybess. For full reproducibility we include in this repository our collected data sets and code pieces.
+Code pieces for motion analysis of honeybess. For full reproducibility we include in this repository our collected data sets and code pieces. R session info is saved in the root as [SessionInfo.txt](SessionInfo.txt).
 
 ## Folder Structure
 
@@ -10,6 +10,10 @@ Code pieces for motion analysis of honeybess. For full reproducibility we includ
   - Script to calculate and extract PMI from movie recording, utilizating cv2
 - [data analysis](./data_analysis/)
   - R scripts to generate plots and statistical tests
+  
+## Statistical Analysis
+
+Results of pairwise of frequencies can be found in [pairwise_wilcox_holm.csv](pairwise_wilcox_holm.csv).
 
 ## MIT Licence
 
