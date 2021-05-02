@@ -3,7 +3,7 @@ library(tidyverse)
 library(readr)
 library(here)
 library(multcompView)
-# Not used in Paper
+# Following packages were not used for the paper
 library(ggsignif)
 library(coin)
 library(broom)
